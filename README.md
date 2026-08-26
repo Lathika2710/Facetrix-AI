@@ -115,7 +115,7 @@ Open **PowerShell** or **Command Prompt** and follow these commands:
 
 ### 1. Navigate to Project Folder
 ```powershell
-cd C:\Users\KiTE\.gemini\antigravity\scratch\face-recognition-app
+cd face-recognition-app
 ```
 
 ### 2. Create Virtual Environment
