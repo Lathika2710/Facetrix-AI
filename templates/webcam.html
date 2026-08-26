@@ -1,0 +1,296 @@
+{% extends 'base.html' %}
+
+{% block title %}Live Webcam Stream - Facetrix AI{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom: 32px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+        <div>
+            <h1 class="card-title">Live Webcam Stream Face Recognition</h1>
+            <p style="color: var(--text-muted); font-size: 0.95rem;">
+                Real-time video frame face detection, landmark alignment, ArcFace embedding extraction, and identity classification.
+            </p>
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+            <button id="btn-start-cam" class="btn btn-primary">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                </svg>
+                Start Camera
+            </button>
+            <button id="btn-stop-cam" class="btn btn-danger" disabled>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                    <path d="M21 21l-4.35-4.35M23 7l-7 5 1.77 1.26M1 5h4m4 0h7a2 2 0 0 1 2 2v7"></path>
+                </svg>
+                Stop Camera
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="results-grid">
+    <!-- Left: Live Video & AI Annotated Overlay -->
+    <div>
+        <div class="card" style="padding: 20px;">
+            <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 12px; display: flex; justify-content: space-between;">
+                <span>AI Live Feed</span>
+                <span id="cam-status-text" style="color: var(--accent-amber); font-size: 0.9rem;">Camera Inactive</span>
+            </h3>
+
+            <!-- Hidden Raw Video Element & Render Output -->
+            <div class="image-preview-box" style="position: relative; aspect-ratio: 4/3; background: #0b0f19; display: flex; align-items: center; justify-content: center;">
+                <video id="webcam-video" autoplay playsinline muted style="display: none;"></video>
+                <canvas id="capture-canvas" style="display: none;"></canvas>
+                
+                <img id="annotated-output" src="" alt="Real-time AI Overlay" style="width: 100%; height: 100%; object-fit: contain; display: none;">
+                
+                <div id="cam-placeholder" style="text-align: center; color: var(--text-muted); padding: 40px;">
+                    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 12px;">
+                        <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                    </svg>
+                    <p style="font-weight: 600;">Click "Start Camera" to enable real-time detection</p>
+                </div>
+            </div>
+
+            <div style="margin-top: 12px; display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted);">
+                <span>Resolution: <strong id="stream-res">-</strong></span>
+                <span>Aspect Ratio: <strong id="stream-ar">-</strong></span>
+                <span>FPS: <strong id="stream-fps">0</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Real-time Recognition Metrics Panel -->
+    <div>
+        <div class="card" style="padding: 20px;">
+            <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 16px;">Live Identity Detection</h3>
+
+            <div style="margin-bottom: 24px;">
+                <span style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase;">Detected Person</span>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                    <h2 id="live-person-name" style="font-size: 2rem; font-weight: 800; color: #ffffff;">No Face</h2>
+                    <span id="live-status-badge" class="badge badge-unknown">OFFLINE</span>
+                </div>
+            </div>
+
+            <!-- Similarity Bar -->
+            <div style="margin-bottom: 24px;">
+                <div style="display: flex; justify-content: space-between; font-weight: 600; font-size: 0.95rem;">
+                    <span>Match Confidence</span>
+                    <span id="live-confidence-score" style="color: var(--accent-cyan);">0.00%</span>
+                </div>
+                <div class="meter-bar">
+                    <div id="live-confidence-fill" class="meter-fill" style="width: 0%;"></div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <h4 style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px;">Recognition Stream Controls:</h4>
+                <div class="metric-pill">
+                    <span>Target FPS Rate</span>
+                    <span>5 - 8 FPS</span>
+                </div>
+                <div class="metric-pill">
+                    <span>Cosine Threshold</span>
+                    <span>{{ threshold }}</span>
+                </div>
+            </div>
+
+            <!-- Detected Faces Table -->
+            <h4 style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px;">Active Detection Feed:</h4>
+            <div style="background: rgba(15, 23, 42, 0.5); border-radius: var(--radius-sm); border: 1px solid var(--border-color); padding: 12px; min-height: 120px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid var(--border-color); text-align: left; color: var(--text-muted);">
+                            <th style="padding: 4px;">Identity</th>
+                            <th style="padding: 4px;">Status</th>
+                            <th style="padding: 4px; text-align: right;">Similarity</th>
+                        </tr>
+                    </thead>
+                    <tbody id="live-detections-tbody">
+                        <tr>
+                            <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 16px;">
+                                Camera inactive. Start webcam to begin streaming.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const video = document.getElementById('webcam-video');
+    const canvas = document.getElementById('capture-canvas');
+    const annotatedImg = document.getElementById('annotated-output');
+    const placeholder = document.getElementById('cam-placeholder');
+    
+    const btnStart = document.getElementById('btn-start-cam');
+    const btnStop = document.getElementById('btn-stop-cam');
+    
+    const statusText = document.getElementById('cam-status-text');
+    const livePersonName = document.getElementById('live-person-name');
+    const liveStatusBadge = document.getElementById('live-status-badge');
+    const liveConfidenceScore = document.getElementById('live-confidence-score');
+    const liveConfidenceFill = document.getElementById('live-confidence-fill');
+    
+    const streamRes = document.getElementById('stream-res');
+    const streamAr = document.getElementById('stream-ar');
+    const streamFps = document.getElementById('stream-fps');
+    const tbody = document.getElementById('live-detections-tbody');
+    
+    let mediaStream = null;
+    let isStreaming = false;
+    let isProcessingFrame = false;
+    let frameTimer = null;
+    
+    let frameCount = 0;
+    let lastFpsCheck = Date.now();
+
+    btnStart.addEventListener('click', async () => {
+        try {
+            mediaStream = await navigator.mediaDevices.getUserMedia({
+                video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" }
+            });
+            video.srcObject = mediaStream;
+            video.play();
+            
+            isStreaming = true;
+            btnStart.disabled = true;
+            btnStop.disabled = false;
+            
+            placeholder.style.display = 'none';
+            annotatedImg.style.display = 'block';
+            statusText.textContent = 'Streaming & Analyzing';
+            statusText.style.color = 'var(--accent-emerald)';
+            
+            startProcessingLoop();
+        } catch (err) {
+            alert('Failed to access webcam: ' + err.message);
+        }
+    });
+
+    btnStop.addEventListener('click', stopStreaming);
+
+    function stopStreaming() {
+        isStreaming = false;
+        if (frameTimer) clearInterval(frameTimer);
+        if (mediaStream) {
+            mediaStream.getTracks().forEach(track => track.stop());
+            mediaStream = null;
+        }
+        
+        btnStart.disabled = false;
+        btnStop.disabled = true;
+        
+        placeholder.style.display = 'block';
+        annotatedImg.style.display = 'none';
+        statusText.textContent = 'Camera Inactive';
+        statusText.style.color = 'var(--accent-amber)';
+        
+        livePersonName.textContent = 'No Face';
+        liveStatusBadge.className = 'badge badge-unknown';
+        liveStatusBadge.textContent = 'OFFLINE';
+        liveConfidenceScore.textContent = '0.00%';
+        liveConfidenceFill.style.width = '0%';
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 16px;">Camera stopped.</td></tr>';
+    }
+
+    function startProcessingLoop() {
+        // Send frame to server every 180 ms (~5-6 FPS)
+        frameTimer = setInterval(captureAndSendFrame, 180);
+    }
+
+    async function captureAndSendFrame() {
+        if (!isStreaming || isProcessingFrame || video.readyState !== 4) return;
+        
+        isProcessingFrame = true;
+        
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        const base64Data = canvas.toDataURL('image/jpeg', 0.8);
+        
+        try {
+            const resp = await fetch('/api/recognize_frame', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: base64Data })
+            });
+            
+            const data = await resp.json();
+            
+            if (data.success) {
+                annotatedImg.src = data.annotated_image;
+                streamRes.textContent = data.dimensions || '-';
+                streamAr.textContent = data.aspect_ratio || '-';
+                
+                updateMetrics(data);
+            }
+        } catch (err) {
+            console.error('Frame error:', err);
+        } finally {
+            isProcessingFrame = false;
+            
+            frameCount++;
+            const now = Date.now();
+            if (now - lastFpsCheck >= 1000) {
+                streamFps.textContent = frameCount;
+                frameCount = 0;
+                lastFpsCheck = now;
+            }
+        }
+    }
+
+    function updateMetrics(data) {
+        if (!data.results || data.results.length === 0) {
+            livePersonName.textContent = 'No Face';
+            liveStatusBadge.className = 'badge badge-unknown';
+            liveStatusBadge.textContent = 'SEARCHING';
+            liveConfidenceScore.textContent = '0.00%';
+            liveConfidenceFill.style.width = '0%';
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 12px;">No faces detected in current frame.</td></tr>';
+            return;
+        }
+
+        const primary = data.results[0];
+        livePersonName.textContent = primary.name;
+        
+        const isMatch = primary.status === 'MATCH';
+        liveStatusBadge.className = isMatch ? 'badge badge-match' : 'badge badge-unknown';
+        liveStatusBadge.textContent = isMatch ? 'MATCH' : 'UNKNOWN';
+        
+        const pct = (primary.similarity * 100).toFixed(1);
+        liveConfidenceScore.textContent = `${pct}%`;
+        liveConfidenceFill.style.width = `${pct}%`;
+        
+        let tbodyHtml = '';
+        data.results.forEach(res => {
+            const matchTag = res.status === 'MATCH' ? 
+                '<span style="color: #34d399; font-weight:600;">MATCH</span>' : 
+                '<span style="color: #fb7185; font-weight:600;">UNKNOWN</span>';
+                
+            tbodyHtml += `
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 6px; font-weight: 600;">${res.name}</td>
+                    <td style="padding: 6px;">${matchTag}</td>
+                    <td style="padding: 6px; text-align: right; color: var(--accent-cyan);">${(res.similarity * 100).toFixed(1)}%</td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = tbodyHtml;
+    }
+});
+</script>
+{% endblock %}

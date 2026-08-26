@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}About AI Pipeline - Facetrix AI{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom: 32px;">
+    <h1 class="card-title">Technical Architecture & Methodology</h1>
+    <p style="color: var(--text-muted); font-size: 1rem; line-height: 1.7;">
+        This web application implements a state-of-the-art deep learning pipeline for human face recognition and classification. Unlike naive pixel comparison or whole-image scaling algorithms, this system extracts invariant facial feature embeddings through a multi-stage geometric and neural processing flow.
+    </p>
+</div>
+
+<div class="card" style="margin-bottom: 32px;">
+    <h2 class="card-title">1. Aspect Ratio & Resolution Handling</h2>
+    <div style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.7;">
+        <p style="margin-bottom: 12px;">
+            A critical requirement of robust face recognition is aspect-ratio independence. When an input image is uploaded (e.g. 1920×1080 16:9, 500×800 5:8 portrait, or 1000×1000 1:1 square), the system <strong>does NOT stretch or warp the whole image</strong> to a fixed resolution. Doing so would distort facial proportions (eye distance, nose ratio) and ruin feature matching.
+        </p>
+        <p style="margin-bottom: 12px;">
+            <strong>How Aspect-Ratio Invariance is Achieved:</strong>
+        </p>
+        <ol style="padding-left: 24px; margin-bottom: 12px;">
+            <li>The full-resolution original image is passed into the RetinaFace detector.</li>
+            <li>RetinaFace computes spatial bounding box coordinates <code>[x1, y1, x2, y2]</code> and 5 key facial landmarks in the original coordinate space.</li>
+            <li>An <strong>Affine Similarity Transformation</strong> maps the 5 detected landmarks (left eye, right eye, nose tip, left mouth, right mouth) onto a standardized 112×112 reference face target template.</li>
+            <li>Only the aligned 112×112 face chip is cropped, intensity-normalized, and passed to the deep neural network.</li>
+        </ol>
+        <p>
+            Because the face chip is normalized independently of the outer frame dimensions, a face registered from a 4K landscape photo is recognized identically in a low-res mobile portrait screenshot!
+        </p>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 32px;">
+    <h2 class="card-title">2. ArcFace Feature Extractor</h2>
+    <div style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.7;">
+        <p style="margin-bottom: 12px;">
+            <strong>ArcFace (Additive Angular Margin Loss)</strong> is a deep convolutional neural network trained to maximize inter-class face variance and minimize intra-class distance on a hypersphere.
+        </p>
+        <p style="margin-bottom: 12px;">
+            The model maps any 112×112 normalized facial image chip into a high-dimensional feature embedding vector:
+        </p>
+        <div style="background: rgba(15, 23, 42, 0.6); padding: 16px; border-radius: var(--radius-sm); font-family: monospace; color: var(--accent-cyan); margin-bottom: 12px;">
+            Embedding Vector: v = [f_1, f_2, f_3, ..., f_512]  where  ||v||_2 = 1.0
+        </div>
+        <p>
+            The resulting 512-dimensional vector encapsulates unique structural characteristics of the individual's face (eye spacing, jawline shape, cheekbone geometry) while remaining invariant to illumination changes, slight expression variations, and background context.
+        </p>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 32px;">
+    <h2 class="card-title">3. Cosine Similarity & Multi-Sample Aggregation</h2>
+    <div style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.7;">
+        <p style="margin-bottom: 12px;">
+            To classify a query face against stored database records, the system computes the <strong>Cosine Similarity</strong> between the query vector <code>q</code> and every stored vector <code>d</code>:
+        </p>
+        <div style="background: rgba(15, 23, 42, 0.6); padding: 16px; border-radius: var(--radius-sm); font-family: monospace; color: var(--accent-emerald); margin-bottom: 12px;">
+            Cosine Similarity = (q . d) / (||q||_2 * ||d||_2) = q . d  (since ||q||_2 = ||d||_2 = 1.0)
+        </div>
+        <p style="margin-bottom: 12px;">
+            <strong>Multi-Sample Aggregation Strategy (Maximum Similarity):</strong><br>
+            If Person A has registered 4 facial sample images in SQLite, the query vector is compared against all 4 embeddings for Person A. The maximum similarity score <code>max(sim_1, sim_2, sim_3, sim_4)</code> is selected as Person A's confidence score.
+        </p>
+        <p>
+            <strong>Decision Rule:</strong><br>
+            If top maximum similarity <code>S_max &ge; {{ threshold }}</code>, identity is matched as Person Name.<br>
+            If top maximum similarity <code>S_max &lt; {{ threshold }}</code>, identity is classified as <strong>Unknown</strong>.
+        </p>
+    </div>
+</div>
+
+<div class="card">
+    <h2 class="card-title">4. Security & Biometric Privacy</h2>
+    <div style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.7;">
+        <ul style="padding-left: 20px;">
+            <li>Biometric embeddings are stored as mathematical binary arrays inside a local SQLite database file.</li>
+            <li>Raw embedding vectors are never exposed or rendered in frontend responses.</li>
+            <li>Uploaded files are sanitized using <code>secure_filename</code> and stored locally with strict file extension validation.</li>
+            <li>This system is designed exclusively for authorized registration and identification experiments with user consent.</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

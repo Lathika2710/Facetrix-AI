@@ -1,0 +1,424 @@
+{% extends 'base.html' %}
+
+{% block title %}Recognize Face - Facetrix AI{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom: 32px;">
+    <h1 class="card-title">Face Recognition & Classification</h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">
+        Perform face recognition in real-time using your live webcam stream or by uploading a query image of any aspect ratio or resolution.
+    </p>
+
+    <!-- Mode Selector Buttons -->
+    <div style="display: flex; gap: 12px; margin-top: 20px; margin-bottom: 24px;">
+        <button type="button" id="rec-tab-webcam" class="btn btn-primary" style="flex: 1; justify-content: center; background: linear-gradient(135deg, var(--accent-cyan), var(--primary));">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+            </svg>
+            🎥 Live Webcam Detection
+        </button>
+        <button type="button" id="rec-tab-upload" class="btn btn-secondary" style="flex: 1; justify-content: center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+            📁 Upload Query Photo
+        </button>
+    </div>
+
+    <!-- Mode 1: Live Webcam Detection Panel -->
+    <div id="rec-panel-webcam">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; gap: 12px;">
+                <button id="rec-cam-start" class="btn btn-primary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                    </svg>
+                    Start Camera
+                </button>
+                <button id="rec-cam-stop" class="btn btn-danger" disabled>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                    Stop Camera
+                </button>
+            </div>
+            <span id="rec-cam-status-text" style="color: var(--accent-amber); font-size: 0.9rem; font-weight: 600;">Camera Inactive</span>
+        </div>
+
+        <div class="results-grid">
+            <!-- Left: Live AI Visual Feed -->
+            <div>
+                <div class="image-preview-box" style="position: relative; aspect-ratio: 4/3; background: #000; display: flex; align-items: center; justify-content: center;">
+                    <video id="rec-webcam-video" autoplay playsinline muted style="display: none;"></video>
+                    <canvas id="rec-capture-canvas" style="display: none;"></canvas>
+                    <img id="rec-annotated-output" src="" alt="Real-time AI Detection" style="width: 100%; height: 100%; object-fit: contain; display: none;">
+                    
+                    <div id="rec-cam-placeholder" style="text-align: center; color: var(--text-muted); padding: 40px;">
+                        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 12px;">
+                            <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                        </svg>
+                        <p style="font-weight: 600;">Click "Start Camera" to launch live face detection</p>
+                    </div>
+                </div>
+
+                <div style="margin-top: 8px; display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted);">
+                    <span>Resolution: <strong id="rec-stream-res">-</strong></span>
+                    <span>Aspect Ratio: <strong id="rec-stream-ar">-</strong></span>
+                    <span>FPS: <strong id="rec-stream-fps">0</strong></span>
+                </div>
+            </div>
+
+            <!-- Right: Real-time Live Recognition Metrics -->
+            <div>
+                <div style="margin-bottom: 20px;">
+                    <span style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase;">Live Detected Person</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                        <h2 id="rec-live-name" style="font-size: 2rem; font-weight: 800; color: #ffffff;">No Face</h2>
+                        <span id="rec-live-badge" class="badge badge-unknown">OFFLINE</span>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 24px;">
+                    <div style="display: flex; justify-content: space-between; font-weight: 600; font-size: 0.95rem;">
+                        <span>Cosine Match Score</span>
+                        <span id="rec-live-score" style="color: var(--accent-cyan);">0.00%</span>
+                    </div>
+                    <div class="meter-bar">
+                        <div id="rec-live-fill" class="meter-fill" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <h4 style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px;">Active Detection Breakdown:</h4>
+                <div style="background: rgba(15, 23, 42, 0.5); border-radius: var(--radius-sm); border: 1px solid var(--border-color); padding: 12px; min-height: 120px;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--border-color); text-align: left; color: var(--text-muted);">
+                                <th style="padding: 4px;">Identity</th>
+                                <th style="padding: 4px;">Status</th>
+                                <th style="padding: 4px; text-align: right;">Similarity</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rec-live-tbody">
+                            <tr>
+                                <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 16px;">
+                                    Camera inactive.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mode 2: Photo Upload Panel -->
+    <div id="rec-panel-upload" style="display: none;">
+        <form action="{{ url_for('recognize') }}" method="POST" enctype="multipart/form-data">
+            <div class="dropzone" id="dropzone">
+                <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+                <div class="dropzone-title">Upload Query Image for Recognition</div>
+                <div class="dropzone-desc">Drag & Drop or click to browse (.jpg, .jpeg, .png, .webp)</div>
+                <input type="file" name="image" id="image" class="file-input" accept="image/*">
+            </div>
+            <div class="preview-grid"></div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+                <button type="submit" class="btn btn-primary">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    Analyze Uploaded Photo
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Upload Photo Recognition Results Section -->
+{% if result %}
+<div class="card">
+    <h2 class="card-title" style="margin-bottom: 24px;">Uploaded Photo Analysis Results</h2>
+    
+    <div class="results-grid">
+        <!-- Left: Annotated Visual Output -->
+        <div>
+            <h4 style="margin-bottom: 12px; color: var(--text-muted);">Annotated Output:</h4>
+            <div class="image-preview-box">
+                <img src="{{ annotated_image_url }}" alt="Recognition Result">
+            </div>
+            <p style="margin-top: 8px; font-size: 0.85rem; color: var(--text-muted); text-align: center;">
+                Green Box = Match | Blue/Red Box = Unknown | White Dots = Facial Landmarks
+            </p>
+        </div>
+
+        <!-- Right: Metrics & Decision Breakdown -->
+        <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div>
+                    <span style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase;">Predicted Identity</span>
+                    <h2 style="font-size: 2rem; font-weight: 800; color: #ffffff;">{{ result.name }}</h2>
+                </div>
+
+                {% if result.status == 'MATCH' %}
+                    <span class="badge badge-match">MATCH</span>
+                {% else %}
+                    <span class="badge badge-unknown">UNKNOWN</span>
+                {% endif %}
+            </div>
+
+            <!-- Similarity Progress Bar -->
+            <div style="margin-bottom: 24px;">
+                <div style="display: flex; justify-content: space-between; font-weight: 600; font-size: 0.95rem;">
+                    <span>Cosine Similarity Score</span>
+                    <span style="color: var(--accent-cyan);">{{ "%.4f"|format(result.similarity) }} ({{ "%.1f"|format(result.similarity * 100) }}%)</span>
+                </div>
+                <div class="meter-bar">
+                    <div class="meter-fill" style="width: {{ result.similarity * 100 }}%;"></div>
+                </div>
+            </div>
+
+            <!-- Aspect Ratio & Technical Metadata Pills -->
+            <div style="margin-bottom: 24px;">
+                <h4 style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 12px;">Image Metadata & Invariance Metrics:</h4>
+                <div class="metric-pill">
+                    <span>Input Resolution</span>
+                    <span>{{ image_dimensions }} px</span>
+                </div>
+                <div class="metric-pill">
+                    <span>Aspect Ratio</span>
+                    <span>{{ aspect_ratio }}</span>
+                </div>
+                <div class="metric-pill">
+                    <span>Faces Detected</span>
+                    <span>{{ face_count }}</span>
+                </div>
+                <div class="metric-pill">
+                    <span>Match Threshold</span>
+                    <span>{{ result.threshold }}</span>
+                </div>
+            </div>
+
+            <!-- Candidate Similarities Table -->
+            {% if result.person_similarities %}
+            <div>
+                <h4 style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 12px;">Candidate Similarity Scores:</h4>
+                <div style="background: rgba(15, 23, 42, 0.5); border-radius: var(--radius-sm); border: 1px solid var(--border-color); padding: 12px;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--border-color); text-align: left; color: var(--text-muted);">
+                                <th style="padding: 6px;">Person Name</th>
+                                <th style="padding: 6px;">Samples</th>
+                                <th style="padding: 6px; text-align: right;">Max Similarity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cand in result.person_similarities %}
+                            <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                                <td style="padding: 6px; font-weight: 600;">{{ cand.name }}</td>
+                                <td style="padding: 6px; color: var(--text-muted);">{{ cand.samples }}</td>
+                                <td style="padding: 6px; text-align: right; color: var(--accent-cyan);">{{ "%.4f"|format(cand.similarity) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const tabWebcam = document.getElementById('rec-tab-webcam');
+    const tabUpload = document.getElementById('rec-tab-upload');
+    const panelWebcam = document.getElementById('rec-panel-webcam');
+    const panelUpload = document.getElementById('rec-panel-upload');
+
+    const video = document.getElementById('rec-webcam-video');
+    const canvas = document.getElementById('rec-capture-canvas');
+    const annotatedImg = document.getElementById('rec-annotated-output');
+    const placeholder = document.getElementById('rec-cam-placeholder');
+
+    const btnStart = document.getElementById('rec-cam-start');
+    const btnStop = document.getElementById('rec-cam-stop');
+    const statusText = document.getElementById('rec-cam-status-text');
+
+    const liveName = document.getElementById('rec-live-name');
+    const liveBadge = document.getElementById('rec-live-badge');
+    const liveScore = document.getElementById('rec-live-score');
+    const liveFill = document.getElementById('rec-live-fill');
+
+    const streamRes = document.getElementById('rec-stream-res');
+    const streamAr = document.getElementById('rec-stream-ar');
+    const streamFps = document.getElementById('rec-stream-fps');
+    const tbody = document.getElementById('rec-live-tbody');
+
+    let mediaStream = null;
+    let isStreaming = false;
+    let isProcessing = false;
+    let frameTimer = null;
+    let frameCount = 0;
+    let lastFpsCheck = Date.now();
+
+    // Tab Switcher
+    tabWebcam.addEventListener('click', () => {
+        tabWebcam.className = 'btn btn-primary';
+        tabWebcam.style.background = 'linear-gradient(135deg, var(--accent-cyan), var(--primary))';
+        tabUpload.className = 'btn btn-secondary';
+        panelWebcam.style.display = 'block';
+        panelUpload.style.display = 'none';
+    });
+
+    tabUpload.addEventListener('click', () => {
+        tabUpload.className = 'btn btn-primary';
+        tabWebcam.className = 'btn btn-secondary';
+        tabWebcam.style.background = '';
+        panelUpload.style.display = 'block';
+        panelWebcam.style.display = 'none';
+        stopStreaming();
+    });
+
+    // Webcam Controls
+    btnStart.addEventListener('click', async () => {
+        try {
+            mediaStream = await navigator.mediaDevices.getUserMedia({
+                video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" }
+            });
+            video.srcObject = mediaStream;
+            video.play();
+
+            isStreaming = true;
+            btnStart.disabled = true;
+            btnStop.disabled = false;
+
+            placeholder.style.display = 'none';
+            annotatedImg.style.display = 'block';
+            statusText.textContent = 'Streaming Live AI Detection';
+            statusText.style.color = 'var(--accent-emerald)';
+
+            frameTimer = setInterval(processWebcamFrame, 180);
+        } catch (err) {
+            alert('Webcam access error: ' + err.message);
+        }
+    });
+
+    btnStop.addEventListener('click', stopStreaming);
+
+    function stopStreaming() {
+        isStreaming = false;
+        if (frameTimer) clearInterval(frameTimer);
+        if (mediaStream) {
+            mediaStream.getTracks().forEach(t => t.stop());
+            mediaStream = null;
+        }
+
+        btnStart.disabled = false;
+        btnStop.disabled = true;
+
+        placeholder.style.display = 'block';
+        annotatedImg.style.display = 'none';
+        statusText.textContent = 'Camera Inactive';
+        statusText.style.color = 'var(--accent-amber)';
+
+        liveName.textContent = 'No Face';
+        liveBadge.className = 'badge badge-unknown';
+        liveBadge.textContent = 'OFFLINE';
+        liveScore.textContent = '0.00%';
+        liveFill.style.width = '0%';
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 16px;">Camera inactive.</td></tr>';
+    }
+
+    async function processWebcamFrame() {
+        if (!isStreaming || isProcessing || video.readyState !== 4) return;
+        isProcessing = true;
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const base64Data = canvas.toDataURL('image/jpeg', 0.85);
+
+        try {
+            const resp = await fetch('/api/recognize_frame', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: base64Data })
+            });
+
+            const data = await resp.json();
+            if (data.success) {
+                annotatedImg.src = data.annotated_image;
+                streamRes.textContent = data.dimensions || '-';
+                streamAr.textContent = data.aspect_ratio || '-';
+                updateLiveMetrics(data);
+            }
+        } catch (err) {
+            console.error('Stream frame error:', err);
+        } finally {
+            isProcessing = false;
+            frameCount++;
+            const now = Date.now();
+            if (now - lastFpsCheck >= 1000) {
+                streamFps.textContent = frameCount;
+                frameCount = 0;
+                lastFpsCheck = now;
+            }
+        }
+    }
+
+    function updateLiveMetrics(data) {
+        if (!data.results || data.results.length === 0) {
+            liveName.textContent = 'No Face';
+            liveBadge.className = 'badge badge-unknown';
+            liveBadge.textContent = 'SEARCHING';
+            liveScore.textContent = '0.00%';
+            liveFill.style.width = '0%';
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 12px;">No faces detected in current frame.</td></tr>';
+            return;
+        }
+
+        const primary = data.results[0];
+        liveName.textContent = primary.name;
+
+        const isMatch = primary.status === 'MATCH';
+        liveBadge.className = isMatch ? 'badge badge-match' : 'badge badge-unknown';
+        liveBadge.textContent = isMatch ? 'MATCH' : 'UNKNOWN';
+
+        const pct = (primary.similarity * 100).toFixed(1);
+        liveScore.textContent = `${pct}%`;
+        liveFill.style.width = `${pct}%`;
+
+        let tbodyHtml = '';
+        data.results.forEach(res => {
+            const matchTag = res.status === 'MATCH' ? 
+                '<span style="color: #34d399; font-weight:600;">MATCH</span>' : 
+                '<span style="color: #fb7185; font-weight:600;">UNKNOWN</span>';
+
+            tbodyHtml += `
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 6px; font-weight: 600;">${res.name}</td>
+                    <td style="padding: 6px;">${matchTag}</td>
+                    <td style="padding: 6px; text-align: right; color: var(--accent-cyan);">${(res.similarity * 100).toFixed(1)}%</td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = tbodyHtml;
+    }
+});
+</script>
+{% endblock %}

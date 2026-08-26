@@ -1,0 +1,29 @@
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# Python Cache & Compiled Files
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# SQLite Database Files
+database/*.db
+database/*.sqlite3
+*.db
+
+# Uploads & Generated Test Files
+uploads/*
+!uploads/.gitkeep
+test_dataset/
+cache_faces/
+models/
+.insightface/
+
+# IDE & System Files
+.vscode/
+.idea/
+.DS_Store
+*.log

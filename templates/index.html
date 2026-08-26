@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block title %}Facetrix AI - Aspect-Ratio Invariant Face Recognition{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h1 class="hero-title">Aspect-Ratio Invariant <span class="gradient-text">Face Recognition</span></h1>
+    <p class="hero-subtitle">
+        Identify registered individuals seamlessly in real-time via live webcam streams or uploaded images of any aspect ratio (16:9, 4:3, 1:1, portrait, landscape) using RetinaFace landmark detection and ArcFace 512-D embeddings.
+    </p>
+    <div class="hero-actions">
+        <a href="{{ url_for('recognize') }}" class="btn btn-primary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            Recognize Face (Live Webcam & Upload)
+        </a>
+        <a href="{{ url_for('register') }}" class="btn btn-secondary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 21v-2a4 4 0 0 4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="8.5" cy="7" r="4"></circle>
+                <line x1="20" y1="8" x2="20" y2="14"></line>
+                <line x1="17" y1="11" x2="23" y2="11"></line>
+            </svg>
+            Register Person
+        </a>
+    </div>
+</section>
+
+<!-- System Stats Panel -->
+<div class="card" style="margin-bottom: 40px;">
+    <h2 class="card-title">System Status Overview</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px;">
+        <div class="metric-pill">
+            <span>Registered Persons</span>
+            <span>{{ total_persons }}</span>
+        </div>
+        <div class="metric-pill">
+            <span>Stored Face Samples</span>
+            <span>{{ total_samples }}</span>
+        </div>
+        <div class="metric-pill">
+            <span>Cosine Similarity Threshold</span>
+            <span>{{ threshold }}</span>
+        </div>
+        <div class="metric-pill">
+            <span>Embedding Vector Dimension</span>
+            <span>512-D</span>
+        </div>
+    </div>
+</div>
+
+<!-- Methodology Pipeline Grid -->
+<h2 class="card-title" style="text-align: center; margin-bottom: 24px;">Core AI Processing Methodology</h2>
+
+<div class="features-grid">
+    <div class="feature-card">
+        <span class="feature-step">Step 01</span>
+        <h3 style="margin-bottom: 8px;">Webcam & File Stream</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">
+            Captures live WebRTC camera frames or uploaded images of any aspect ratio (1920x1080, 500x800, 1:1, etc.).
+        </p>
+    </div>
+
+    <div class="feature-card">
+        <span class="feature-step">Step 02</span>
+        <h3 style="margin-bottom: 8px;">RetinaFace Detection</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">
+            Locates face bounding boxes and predicts 5 key facial landmarks (left eye, right eye, nose, left mouth, right mouth).
+        </p>
+    </div>
+
+    <div class="feature-card">
+        <span class="feature-step">Step 03</span>
+        <h3 style="margin-bottom: 8px;">Affine Face Alignment</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">
+            Applies 2D similarity transform mapping 5 facial landmarks to a standard target template, eliminating head tilt and roll.
+        </p>
+    </div>
+
+    <div class="feature-card">
+        <span class="feature-step">Step 04</span>
+        <h3 style="margin-bottom: 8px;">ArcFace Embedding</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">
+            Deep neural network transforms aligned 112x112 face chip into a unit-normalized 512-dimensional numerical vector.
+        </p>
+    </div>
+
+    <div class="feature-card">
+        <span class="feature-step">Step 05</span>
+        <h3 style="margin-bottom: 8px;">Cosine Similarity Match</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">
+            Computes dot product between query embedding and stored database vectors with maximum sample score aggregation.
+        </p>
+    </div>
+
+    <div class="feature-card">
+        <span class="feature-step">Step 06</span>
+        <h3 style="margin-bottom: 8px;">Real-Time Render</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">
+            Draws bounding box, landmarks, name tag, confidence meter, and MATCH/UNKNOWN status directly on live stream.
+        </p>
+    </div>
+</div>
+{% endblock %}

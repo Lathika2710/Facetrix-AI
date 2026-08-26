@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block title %}Registered Persons - Facetrix AI{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
+    <div>
+        <h1 class="card-title">Registered Persons Database</h1>
+        <p style="color: var(--text-muted); font-size: 0.95rem;">
+            List of all individuals registered in the system along with their stored ArcFace embedding sample counts.
+        </p>
+    </div>
+    <a href="{{ url_for('register') }}" class="btn btn-primary">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        Register New Person
+    </a>
+</div>
+
+{% if persons %}
+<div class="persons-grid">
+    {% for p in persons %}
+    <div class="person-card">
+        <div>
+            <div class="person-avatar">
+                {{ p.name[0]|upper }}
+            </div>
+            <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 4px;">{{ p.name }}</h3>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px;">
+                Registered: {{ p.created_at[:10] if p.created_at else 'N/A' }}
+            </p>
+        </div>
+
+        <div style="border-top: 1px solid var(--border-color); padding-top: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <span style="font-size: 0.85rem; color: var(--text-muted);">Stored Samples</span>
+                <span class="badge badge-match" style="padding: 2px 10px; font-size: 0.8rem;">{{ p.sample_count }} vectors</span>
+            </div>
+
+            <form action="{{ url_for('delete_person_route', person_id=p.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete {{ p.name }} and all associated facial embeddings?');">
+                <button type="submit" class="btn btn-danger" style="width: 100%; justify-content: center; padding: 8px 16px; font-size: 0.85rem;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    Delete Person
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card" style="text-align: center; padding: 60px 24px;">
+    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" style="margin-bottom: 16px;">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+        <circle cx="9" cy="7" r="4"></circle>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+    </svg>
+    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 8px;">No Registered Persons Found</h3>
+    <p style="color: var(--text-muted); max-width: 480px; margin: 0 auto 24px auto; font-size: 0.95rem;">
+        The SQLite database is currently empty. Register a person by uploading multiple facial images to start using the recognition system.
+    </p>
+    <a href="{{ url_for('register') }}" class="btn btn-primary">
+        Register First Person
+    </a>
+</div>
+{% endif %}
+{% endblock %}
